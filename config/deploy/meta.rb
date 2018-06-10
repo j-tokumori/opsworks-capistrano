@@ -1,4 +1,4 @@
-ENV["AWS_REGION"] = "us-east-1"
+ENV["AWS_REGION"] = "ap-northeast-1" # TODO: INPUT REGION
 require "aws-sdk-core"
 
 desc "Populate config/deploy with one file per AWS OpsWorks stack"
@@ -10,7 +10,7 @@ task :populate => :extinguish do
     stages[stack.name] = {}
     opsworks.describe_layers(:stack_id => stack.stack_id).layers.each do |layer|
       opsworks.describe_instances(:layer_id => layer.layer_id).instances.reject { |instance| instance.public_ip.nil? }.each do |instance|
-        stages[stack.name][instance.public_ip] ||= { :user => instance.os.include?("Amazon Linux") ? "ec2-user" : "ubuntu", :roles => [] }
+        stages[stack.name][instance.public_ip] ||= { :host => instance.hostname, :user => instance.os.include?("Amazon Linux") ? "ec2-user" : "ubuntu", :roles => [] }
         stages[stack.name][instance.public_ip][:roles] << layer.name
       end
     end
@@ -18,10 +18,10 @@ task :populate => :extinguish do
 
   stages.each do |stack, instances|
     File.open("config/deploy/#{stack}.rb", "w") do |file|
-      instances.values.flat_map { |instance| instance[:roles] }.uniq.each do |layer|
+      instances.values.flat_map { |instance| instance[:roles] }.uniq.sort.each do |layer|
         file.puts "role #{layer.inspect}, []"
       end
-      instances.each do |ip, instance|
+      instances.sort_by { |_, instance| [instance[:role], instance[:host]] }.each do |(ip, instance)|
         file.puts "server #{ip.inspect}, #{instance.inspect}"
       end
     end
