@@ -10,7 +10,8 @@ task :populate => :extinguish do
     stages[stack.name] = {}
     opsworks.describe_layers(:stack_id => stack.stack_id).layers.each do |layer|
       opsworks.describe_instances(:layer_id => layer.layer_id).instances.reject { |instance| instance.public_ip.nil? }.each do |instance|
-        stages[stack.name][instance.public_ip] ||= { :host => instance.hostname, :user => instance.os.include?("Amazon Linux") ? "ec2-user" : "ubuntu", :roles => [] }
+        # stages[stack.name][instance.public_ip] ||= { :user => instance.os.include?("Amazon Linux") ? "ec2-user" : "ubuntu", :roles => [] }
+        stages[stack.name][instance.public_ip] ||= { :host => instance.hostname, :roles => [] }
         stages[stack.name][instance.public_ip][:roles] << layer.name
       end
     end
@@ -34,4 +35,3 @@ task :extinguish do
     File.delete stage
   end
 end
-
